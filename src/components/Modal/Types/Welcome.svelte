@@ -1,9 +1,11 @@
 <script>
 	import { difficulty as difficultyStore } from '@sudoku/stores/difficulty';
-	import { startNew, startCustom } from '@sudoku/game';
 	import { validateSencode } from '@sudoku/sencode';
+	import { decodeSencode } from '@sudoku/sencode';
+	import { generateSudoku } from '@sudoku/sudoku';
 	import { DIFFICULTIES } from '@sudoku/constants';
 
+	export let gameStore;
 	export let data = {};
 	export let hideModal;
 
@@ -14,11 +16,19 @@
 	$: buttonDisabled = enteredSencode ? !validateSencode(sencode) : !DIFFICULTIES.hasOwnProperty(difficulty);
 
 	function handleStart() {
+		let initialGrid;
+		
 		if (validateSencode(sencode)) {
-			startCustom(sencode);
+			// 自定义题目：解码sencode
+			const decoded = decodeSencode(sencode);
+			initialGrid = decoded;
 		} else {
-			startNew(difficulty);
+			// 生成难度对应的题目
+			initialGrid = generateSudoku(difficulty);
 		}
+
+		// 统一通过gameStore启动新局
+		gameStore.newGame(initialGrid);
 
 		hideModal();
 	}

@@ -1,7 +1,9 @@
 <script>
-	import game from '@sudoku/game';
 	import { validateSencode } from '@sudoku/sencode';
+	import { decodeSencode } from '@sudoku/sencode';
+	import { generateSudoku } from '@sudoku/sudoku';
 	import { modal } from '@sudoku/stores/modal';
+	import { gameStore } from '@sudoku/stores/createGameStore';
 	import { slide, fade } from 'svelte/transition';
 	import { DIFFICULTIES, DROPDOWN_DURATION, DIFFICULTY_CUSTOM } from '@sudoku/constants';
 	import { difficulty } from '@sudoku/stores/difficulty';
@@ -10,28 +12,29 @@
 
 	function handleDifficulty(difficultyValue) {
 		dropdownVisible = false;
-		game.pause();
+		gameStore.pause();
 
 		modal.show('confirm', {
 			title: 'New Game',
 			text: 'Start new game with difficulty "' + DIFFICULTIES[difficultyValue] + '"?',
 			button: 'Continue',
-			onHide: game.resume,
+			onHide: gameStore.resume,
 			callback: () => {
-				game.startNew(difficultyValue);
+				const initialGrid = generateSudoku(difficultyValue);
+				gameStore.newGame(initialGrid);
 			},
 		});
 	}
 
 	function handleCreateOwn() {
 		dropdownVisible = false;
-		game.pause();
+		gameStore.pause();
 
 		modal.show('confirm', {
 			title: 'Create Own',
 			text: 'Switch to the creator mode to create your own Sudoku puzzle?',
 			button: 'Continue',
-			onHide: game.resume,
+			onHide: gameStore.resume,
 			callback: () => {
 				//game.startCreatorMode();
 			},
@@ -40,16 +43,17 @@
 
 	function handleEnterCode() {
 		dropdownVisible = false;
-		game.pause();
+		gameStore.pause();
 
 		modal.show('prompt', {
 			title: 'Enter Code',
 			text: 'Please enter the code of the Sudoku puzzle you want to play:',
 			fontMono: true,
 			button: 'Start',
-			onHide: game.resume,
+			onHide: gameStore.resume,
 			callback: (value) => {
-				game.startCustom(value);
+				const decoded = decodeSencode(value);
+				gameStore.newGame(decoded);
 			},
 			validate: validateSencode
 		});
@@ -57,12 +61,12 @@
 
 	function showDropdown() {
 		dropdownVisible = true;
-		game.pause();
+		gameStore.pause();
 	}
 
 	function hideDropdown() {
 		dropdownVisible = false;
-		setTimeout(game.resume, DROPDOWN_DURATION);
+		setTimeout(gameStore.resume, DROPDOWN_DURATION);
 	}
 </script>
 

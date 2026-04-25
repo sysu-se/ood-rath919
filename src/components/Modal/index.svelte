@@ -19,7 +19,8 @@
 
 		<div transition:scale={{duration: MODAL_DURATION}} class="modal-container">
 			<div class="modal-content">
-				<svelte:component this={types[$modal]} data={$modalData} hideModal={modal.hide} />
+				<!-- 传递所有modalData属性作为props给模态组件 -->
+				<svelte:component this={types[$modal]} {...$modalData} gameStore={$modalData.gameStore} hideModal={modal.hide} />
 			</div>
 		</div>
 	</div>

@@ -1,12 +1,12 @@
 <script>
-	import { BOX_SIZE } from '@sudoku/constants';
-	import { gamePaused } from '@sudoku/stores/game';
-	import { grid, userGrid, invalidCells } from '@sudoku/stores/grid';
-	import { settings } from '@sudoku/stores/settings';
-	import { cursor } from '@sudoku/stores/cursor';
-	import { candidates } from '@sudoku/stores/candidates';
 	import Cell from './Cell.svelte';
+	import { BOX_SIZE } from '@sudoku/constants';
+	import { cursor } from '@sudoku/stores/cursor';
 
+	// 接收 gameStore
+	export let gameStore;
+
+	// 辅助方法
 	function isSelected(cursorStore, x, y) {
 		return cursorStore.x === x && cursorStore.y === y;
 	}
@@ -24,9 +24,11 @@
 
 	function getValueAtCursor(gridStore, cursorStore) {
 		if (cursorStore.x === null && cursorStore.y === null) return null;
-
 		return gridStore[cursorStore.y][cursorStore.x];
 	}
+	
+	$: initialGrid = $gameStore.game.getInitialSudoku().getGrid();
+	
 </script>
 
 <div class="board-padding relative z-10">
@@ -34,31 +36,26 @@
 		<div class="w-full" style="padding-top: 100%"></div>
 	</div>
 	<div class="board-padding absolute inset-0 flex justify-center">
-
-		<div class="bg-white shadow-2xl rounded-xl overflow-hidden w-full h-full max-w-xl grid" class:bg-gray-200={$gamePaused}>
-
-			{#each $userGrid as row, y}
+		<div class="bg-white shadow-2xl rounded-xl overflow-hidden w-full h-full max-w-xl
+					grid grid-cols-9">
+			{#each $gameStore.grid as row, y}
 				{#each row as value, x}
 					<Cell {value}
 					      cellY={y + 1}
 					      cellX={x + 1}
-					      candidates={$candidates[x + ',' + y]}
-					      disabled={$gamePaused}
+					      disabled={false}
 					      selected={isSelected($cursor, x, y)}
-					      userNumber={$grid[y][x] === 0}
-					      sameArea={$settings.highlightCells && !isSelected($cursor, x, y) && isSameArea($cursor, x, y)}
-					      sameNumber={$settings.highlightSame && value && !isSelected($cursor, x, y) && getValueAtCursor($userGrid, $cursor) === value}
-					      conflictingNumber={$settings.highlightConflicting && $grid[y][x] === 0 && $invalidCells.includes(x + ',' + y)} />
+					      userNumber={initialGrid[y][x] === 0}
+					      sameArea={isSameArea($cursor, x, y)}
+						  sameNumber={getValueAtCursor($gameStore.grid, $cursor) !== 0 &&getValueAtCursor($gameStore.grid, $cursor) === value}
+					      conflictingNumber={initialGrid[y][x] === 0 && $gameStore.invalidCells?.includes(x + ',' + y)} />
 				{/each}
 			{/each}
 
 		</div>
-
 	</div>
 </div>
 
 <style>
-	.board-padding {
-		@apply px-4 pb-4;
-	}
+	.board-padding { @apply px-4 pb-4; }
 </style>
