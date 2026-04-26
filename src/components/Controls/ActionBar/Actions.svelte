@@ -9,8 +9,11 @@
 	import { gameStore } from '@sudoku/stores/createGameStore';
 	
 	let hintMessage = '';
+	let exploreMessage = '';
 
 	$: hintsAvailable = $hints > 0;
+	$: canEnterExplore = !$gameStore.isExploring && $gameStore.nextHints.length === 0;
+	$: inExplore = $gameStore.isExploring;
 
 	function handleHint() {
 		if (!hintsAvailable) return;
@@ -23,6 +26,32 @@
 		}
 		
 		hintMessage = result.message;
+		exploreMessage = ''; // clear explore message
+	}
+
+	function handleEnterExplore() {
+		if (!canEnterExplore) return;
+
+		const success = gameStore.enterExplore();
+		if (success) {
+			hintMessage = '';
+			exploreMessage = 'Entered explore mode. Try filling cells.';
+		} else {
+			hintMessage = 'Cannot enter explore mode: hints available.';
+			exploreMessage = '';
+		}
+	}
+
+	function handleCommitExplore() {
+		gameStore.commitExplore();
+		hintMessage = '';
+		exploreMessage = 'Explore committed.';
+	}
+
+	function handleAbortExplore() {
+		gameStore.abortExplore();
+		hintMessage = '';
+		exploreMessage = 'Explore aborted.';
 	}
 </script>
 
@@ -64,6 +93,16 @@
 		<div class="hint-message mt-2 text-sm text-gray-700">{hintMessage}</div>
 	{/if}
 
+	{#if exploreMessage}
+		<div class="explore-message mt-2 text-sm text-blue-600">{exploreMessage}</div>
+	{/if}
+
+	{#if inExplore}
+		<div class="explore-status mt-2 text-sm text-blue-600 font-semibold">
+			Exploring: Try different values. Conflicts will auto-revert.
+		</div>
+	{/if}
+
 	<button class="btn btn-round btn-badge" on:click={notes.toggle} title="Notes ({$notes ? 'ON' : 'OFF'})">
 		<svg class="icon-outline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -71,6 +110,26 @@
 
 		<span class="badge tracking-tighter" class:badge-primary={$notes}>{$notes ? 'ON' : 'OFF'}</span>
 	</button>
+
+	<button class="btn btn-round" disabled={!canEnterExplore} on:click={handleEnterExplore} title={canEnterExplore ? "Enter Explore Mode" : "Cannot enter explore: hints available"}>
+		<svg class="icon-outline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+		</svg>
+	</button>
+
+	{#if inExplore}
+		<button class="btn btn-round btn-success" on:click={handleCommitExplore} title="Commit Explore">
+			<svg class="icon-outline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+			</svg>
+		</button>
+
+		<button class="btn btn-round btn-danger" on:click={handleAbortExplore} title="Abort Explore">
+			<svg class="icon-outline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+			</svg>
+		</button>
+	{/if}
 
 </div>
 

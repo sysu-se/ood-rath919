@@ -11,11 +11,22 @@
 		const { x, y } = get(cursor);
 		if (x === null || y === null) return;
 
-		gameStore.guess({
-			row: y,
-			col: x,
-			value: num
-		});
+		if ($gameStore.isExploring) {
+			const result = gameStore.exploreGuess({
+				row: y,
+				col: x,
+				value: num
+			});
+			if (!result.success) {
+				alert(`Explore failed: ${result.reason}`);
+			}
+		} else {
+			gameStore.guess({
+				row: y,
+				col: x,
+				value: num
+			});
+		}
 	}
 
 	function handleKey(e) {

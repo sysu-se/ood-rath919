@@ -9,6 +9,10 @@ export class Game {
     #initialSudoku;
     #undoStack = [];
     #redoStack = [];
+    #isExploring = false;
+    #exploreStartSudoku = null;
+    #exploreHistory = [];
+    #failedStates = new Set();
     constructor(sudoku) {
         if (!(sudoku instanceof Sudoku)) {
             throw new Error('Invalid Sudoku instance');
@@ -124,6 +128,11 @@ export class Game {
         // 重置历史栈，防止跨局污染
         this.#undoStack = [];
         this.#redoStack = [];
+        // 重置探索状态
+        this.#isExploring = false;
+        this.#exploreStartSudoku = null;
+        this.#exploreHistory = [];
+        this.#failedStates = new Set();
     }
 
     /** 序列化 */
@@ -132,7 +141,11 @@ export class Game {
             currentSudoku: this.#currentSudoku.toJSON(),
             initialSudoku: this.#initialSudoku.toJSON(),
             undoStack: this.#undoStack.map(s => s.toJSON()),
-            redoStack: this.#redoStack.map(s => s.toJSON())
+            redoStack: this.#redoStack.map(s => s.toJSON()),
+            isExploring: this.#isExploring,
+            exploreStartSudoku: this.#exploreStartSudoku ? this.#exploreStartSudoku.toJSON() : null,
+            exploreHistory: this.#exploreHistory.map(s => s.toJSON()),
+            failedStates: Array.from(this.#failedStates)
         };
     }
 
@@ -151,6 +164,10 @@ export class Game {
         game.#currentSudoku = currentSudoku;
         game.#undoStack = (json.undoStack || []).map(Sudoku.fromJSON);
         game.#redoStack = (json.redoStack || []).map(Sudoku.fromJSON);
+        game.#isExploring = json.isExploring || false;
+        game.#exploreStartSudoku = json.exploreStartSudoku ? Sudoku.fromJSON(json.exploreStartSudoku) : null;
+        game.#exploreHistory = (json.exploreHistory || []).map(Sudoku.fromJSON);
+        game.#failedStates = new Set(json.failedStates || []);
 
         return game;
     }
@@ -235,6 +252,99 @@ export class Game {
             candidates: this.getCandidates(row, col),
             nextHints: this.getNextHints()
         };
+    }
+
+    /**
+     * ============ 探索功能 ============
+     */
+
+    /**
+     * 进入探索模式
+     * 只有当没有唯一候选时才能进入
+     */
+    enterExplore() {
+        if (this.#isExploring) return false;
+
+        const hints = this.getNextHints();
+        if (hints.length > 0) return false; // 有唯一候选，不能进入探索
+
+        this.#isExploring = true;
+        this.#exploreStartSudoku = this.#currentSudoku.clone();
+        this.#exploreHistory = [];
+        return true;
+    }
+
+    /**
+     * 在探索模式中填写
+     * @param {{row:number, col:number, value:number}} move
+     * @returns {{success: boolean, reason?: string}}
+     */
+    exploreGuess(move) {
+        if (!this.#isExploring) return { success: false, reason: 'not in explore mode' };
+
+        const { row, col, value } = move;
+        const initialGrid = this.#initialSudoku.getGrid();
+        if (initialGrid[row][col] !== 0) return { success: false, reason: 'initial cell' };
+
+        // 检查当前状态是否已失败
+        const currentJson = JSON.stringify(this.#currentSudoku.toJSON());
+        if (this.#failedStates.has(currentJson)) {
+            return { success: false, reason: 'already failed state' };
+        }
+
+        // 保存当前状态
+        const prevSudoku = this.#currentSudoku.clone();
+        this.#currentSudoku.guess(move);
+        this.#exploreHistory.push(prevSudoku);
+
+        // 检查冲突
+        if (this.isConflict(col, row)) {
+            // 记录失败状态
+            this.#failedStates.add(currentJson);
+            // 回滚到探索起点
+            this.#currentSudoku = this.#exploreStartSudoku.clone();
+            this.#exploreHistory = [];
+            return { success: false, reason: 'conflict' };
+        }
+
+        return { success: true };
+    }
+
+    /**
+     * 提交探索结果，合并到主局面
+     */
+    commitExplore() {
+        if (!this.#isExploring) return false;
+
+        // 将探索起点推入undo栈
+        this.#undoStack.push(this.#exploreStartSudoku.clone());
+        this.#redoStack = [];
+
+        // 重置探索状态
+        this.#isExploring = false;
+        this.#exploreStartSudoku = null;
+        this.#exploreHistory = [];
+        return true;
+    }
+
+    /**
+     * 放弃探索，回滚到探索前
+     */
+    abortExplore() {
+        if (!this.#isExploring) return false;
+
+        this.#currentSudoku = this.#exploreStartSudoku.clone();
+        this.#isExploring = false;
+        this.#exploreStartSudoku = null;
+        this.#exploreHistory = [];
+        return true;
+    }
+
+    /**
+     * 是否在探索模式中
+     */
+    isInExplore() {
+        return this.#isExploring;
     }
 }
 
