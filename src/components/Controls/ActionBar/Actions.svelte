@@ -135,8 +135,21 @@
 
 
 <style>
+	.action-panel {
+		position: relative;
+	}
+
 	.action-buttons {
 		@apply flex flex-wrap justify-evenly self-end;
+	}
+
+	.action-messages {
+		position: absolute;
+		top: -40px;
+		left: 0;
+		right: 0;
+		text-align: center;
+		pointer-events: none;
 	}
 
 	.btn-badge {
